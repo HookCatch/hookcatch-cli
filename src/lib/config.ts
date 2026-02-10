@@ -8,7 +8,7 @@ interface Config {
 const config = new Conf<Config>({
   projectName: 'hookcatch',
   defaults: {
-    apiUrl: 'http://localhost:3002', // Default for development (backend port)
+    apiUrl: process.env.HOOKCATCH_API_URL || 'https://api.hookcatch.dev', // Production default
   },
 });
 
@@ -17,7 +17,8 @@ export function setApiToken(token: string): void {
 }
 
 export function getApiToken(): string | undefined {
-  return config.get('apiToken');
+  // Check environment variable first, then config file
+  return process.env.HOOKCATCH_TOKEN || config.get('apiToken');
 }
 
 export function clearApiToken(): void {
@@ -25,7 +26,8 @@ export function clearApiToken(): void {
 }
 
 export function getApiUrl(): string {
-  return config.get('apiUrl') || 'http://localhost:3002';
+  // Priority: env var > config file > production default
+  return process.env.HOOKCATCH_API_URL || config.get('apiUrl') || 'https://api.hookcatch.dev';
 }
 
 export function setApiUrl(url: string): void {
@@ -33,5 +35,5 @@ export function setApiUrl(url: string): void {
 }
 
 export function hasApiToken(): boolean {
-  return !!config.get('apiToken');
+  return !!(process.env.HOOKCATCH_TOKEN || config.get('apiToken'));
 }

@@ -7,6 +7,8 @@ import { tunnelCommand } from './commands/tunnel.js';
 import { listCommand } from './commands/list.js';
 import { stopCommand } from './commands/stop.js';
 import { logoutCommand } from './commands/logout.js';
+import { binCommand } from './commands/bin.js';
+import { tokenCommand } from './commands/token.js';
 
 const program = new Command();
 
@@ -26,6 +28,8 @@ console.log(chalk.cyan(`
 
 // Add commands
 program.addCommand(loginCommand);
+program.addCommand(binCommand);
+program.addCommand(tokenCommand);
 program.addCommand(tunnelCommand);
 program.addCommand(listCommand);
 program.addCommand(stopCommand);

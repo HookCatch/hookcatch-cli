@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { getApiToken, getApiUrl } from './config.js';
 
 class HookCatchAPI {
-  private client: AxiosInstance;
+  public client: AxiosInstance; // Make public for token commands
 
   constructor() {
     this.client = axios.create({
@@ -128,6 +128,52 @@ class HookCatchAPI {
         }
       }
     );
+    return response.data;
+  }
+
+  // Bin management methods
+  async createBin(options?: { name?: string; isPrivate?: boolean; password?: string }) {
+    const response = await this.client.post(
+      '/api/bins',
+      {
+        name: options?.name,
+        isPrivate: options?.isPrivate,
+        accessPassword: options?.password,
+      },
+      { headers: this.getHeaders() }
+    );
+    return response.data.bin;
+  }
+
+  async listBins() {
+    const response = await this.client.get('/api/bins', {
+      headers: this.getHeaders(),
+    });
+    return response.data.bins;
+  }
+
+  async getBin(binId: string) {
+    const response = await this.client.get(`/api/bins/${binId}`, {
+      headers: this.getHeaders(),
+    });
+    return response.data.bin;
+  }
+
+  async getBinRequests(binId: string, options?: { limit?: number; before?: number }) {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.before) params.append('before', options.before.toString());
+
+    const response = await this.client.get(`/api/bins/${binId}/requests?${params}`, {
+      headers: this.getHeaders(),
+    });
+    return response.data;
+  }
+
+  async deleteBin(binId: string) {
+    const response = await this.client.delete(`/api/bins/${binId}`, {
+      headers: this.getHeaders(),
+    });
     return response.data;
   }
 }

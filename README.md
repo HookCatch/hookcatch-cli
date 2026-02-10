@@ -1,6 +1,6 @@
 # HookCatch CLI
 
-Official CLI tool for creating localhost tunnels with HookCatch.
+Official CLI tool for webhook testing and localhost tunneling with HookCatch.
 
 ## Installation
 
@@ -13,156 +13,307 @@ npm install -g hookcatch
 hookcatch tunnel 3000
 ```
 
-## Usage
-
-### 1. Login
-
-First, generate an API token from your [HookCatch Dashboard](https://hookcatch.dev/dashboard), then:
+## Quick Start
 
 ```bash
-npx hookcatch login
-# Enter your API token when prompted
-```
+# 1. Login with email/password
+hookcatch login
+# Enter your email and password
 
-### 2. Start Tunnel (Inbound - Receive webhooks)
+# 2. (Optional) Generate long-lived API token for automation
+hookcatch token generate
+export HOOKCATCH_API_KEY="hc_live_..."
 
-Forward external webhooks to your localhost:
+# 3. Create a webhook bin
+hookcatch bin create --name "Test Stripe"
+# Returns: https://hookcatch.dev/b/abc123xyz
 
-```bash
-npx hookcatch tunnel <port>
+# 4. View captured requests
+hookcatch bin requests abc123xyz
 
-# Example: Forward to localhost:3000
-npx hookcatch tunnel 3000
-
-# With custom options
-npx hookcatch tunnel 8080 --password secret123
-```
-
-Your tunnel URL will be displayed. Send webhooks to this URL and they'll be forwarded to your localhost.
-
-### 3. Start Tunnel with Capture (Outbound - Capture localhost requests)
-
-Capture outbound requests from your localhost application to a bin:
-
-```bash
-npx hookcatch tunnel <port> --capture <binId>
-
-# Example: Capture requests to bin abc123
-npx hookcatch tunnel 3000 --capture abc123
-
-# Custom proxy port (default: 8081)
-npx hookcatch tunnel 3000 --capture abc123 --proxy-port 9000
-```
-
-Configure your application to use the proxy:
-
-```bash
-# Set HTTP_PROXY environment variable
-HTTP_PROXY=http://localhost:8081 node app.js
-
-# Or in your code (Node.js example):
-const axios = require('axios');
-axios.get('https://api.example.com', {
-  proxy: {
-    host: 'localhost',
-    port: 8081
-  }
-});
-```
-
-All requests through the proxy will be captured in your bin and visible in the dashboard.
-
-### 4. Bidirectional Mode (Both directions)
-
-Run both inbound and outbound capture simultaneously:
-
-```bash
-npx hookcatch tunnel 3000 --capture my-bin-id
-```
-
-- **INBOUND**: External webhooks → tunnel URL → your localhost:3000
-- **OUTBOUND**: Your app → proxy (localhost:8081) → captured in bin
-
-### 5. List Active Tunnels
-
-```bash
-npx hookcatch list
-```
-
-### 6. Stop Tunnel
-
-```bash
-npx hookcatch stop <tunnelId>
+# 5. Tunnel your localhost
+hookcatch tunnel 3000
 ```
 
 ## Commands
 
-### `login`
-Authenticate with your HookCatch API token.
+### Authentication
+
+#### `login`
+Authenticate with your HookCatch account (email/password or API token).
 
 ```bash
-npx hookcatch login
+# Login with email/password (interactive)
+hookcatch login
+
+# Or login with API token directly
+hookcatch login --token hc_live_xxx
 ```
 
-### `tunnel <port>`
+**For automation (OpenClaw, CI/CD):**
+```bash
+# Generate a long-lived API token
+hookcatch token generate
+
+# Then use it via environment variable
+export HOOKCATCH_API_KEY="hc_live_..."
+
+# Or login directly
+hookcatch login --token hc_live_...
+```
+
+#### `logout`
+Remove stored credentials.
+
+```bash
+hookcatch logout
+```
+
+### Bin Management (NEW!)
+
+#### `bin create`
+Create a new webhook bin.
+
+```bash
+hookcatch bin create [options]
+
+# Options:
+#   --name <name>          Bin name
+#   --private              Create private bin (PLUS+ tier)
+#   --password <password>  Password for private bin
+
+# Examples:
+hookcatch bin create --name "Stripe Webhooks"
+hookcatch bin create --private --password secret123
+```
+
+#### `bin list`
+List all your bins.
+
+```bash
+hookcatch bin list
+```
+
+#### `bin requests <binId>`
+Get captured requests for a bin.
+
+```bash
+hookcatch bin requests <binId> [options]
+
+# Options:
+#   --limit <number>  Number of requests (default: 50)
+#   --format <type>   Output format: json|table (default: table)
+#   --method <method> Filter by HTTP method (GET, POST, etc.)
+
+# Examples:
+hookcatch bin requests abc123xyz --limit 10
+hookcatch bin requests abc123xyz --format json --method POST
+```
+
+#### `bin delete <binId>`
+Delete a bin.
+
+```bash
+hookcatch bin delete <binId> --yes
+```
+
+### API Token Management (NEW!)
+
+#### `token generate`
+Generate a long-lived API token for automation.
+
+```bash
+hookcatch token generate
+# Store the token securely - it won't be shown again!
+# Use it with: export HOOKCATCH_API_KEY="hc_live_..."
+```
+
+#### `token status`
+Check your API token status.
+
+```bash
+hookcatch token status
+```
+
+#### `token revoke`
+Revoke your API token.
+
+```bash
+hookcatch token revoke --yes
+```
+
+### Localhost Tunneling
+
+#### `tunnel <port>`
 Create a tunnel to your localhost.
 
-**Options:**
-- `--password <password>` - Password-protect the tunnel (PRO+ tier)
-- `--subdomain <name>` - Custom subdomain (ENTERPRISE tier)
-
-**Example:**
 ```bash
-npx hookcatch tunnel 3000
-# ✓ Tunnel established
-# → http://localhost:3001/tunnel/abc123xyz
-# 
-# Forwarding to http://localhost:3000
-# Press Ctrl+C to stop
+hookcatch tunnel <port> [options]
+
+# Options:
+#   --password <password>  Password-protect tunnel (PRO+ tier)
+#   --subdomain <name>     Custom subdomain (ENTERPRISE tier)
+#   --capture <binId>      Capture outbound requests to bin
+#   --proxy-port <port>    Local proxy port (default: 8081)
+
+# Examples:
+hookcatch tunnel 3000
+hookcatch tunnel 8080 --password secret123
+hookcatch tunnel 3000 --capture abc123
 ```
 
-### `list`
+#### `list`
 Show all your active tunnels.
 
 ```bash
-npx hookcatch list
+hookcatch list
 ```
 
-### `stop <tunnelId>`
+#### `stop <tunnelId>`
 Stop a specific tunnel.
 
 ```bash
-npx hookcatch stop abc123xyz
+hookcatch stop abc123xyz
 ```
 
-### `logout`
-Remove stored API token.
+## Usage Examples
+
+### Test Stripe Webhooks
 
 ```bash
-npx hookcatch logout
+# Create a bin
+hookcatch bin create --name "Stripe Test"
+# Use the URL in Stripe dashboard
+
+# View captured webhooks
+hookcatch bin requests abc123xyz --format json
 ```
+
+### Expose Local API
+
+```bash
+# Start your local server
+# python -m http.server 8000 &
+
+# Expose it via tunnel
+hookcatch tunnel 8000
+# Public URL: https://hookcatch.dev/tunnel/xyz789
+```
+
+### Capture Outbound Requests
+
+```bash
+# Start tunnel with capture
+hookcatch tunnel 3000 --capture my-bin-id
+
+# Configure your app to use proxy
+HTTP_PROXY=http://localhost:8081 node app.js
+```
+
+### Automation with API Tokens
+
+```bash
+# Generate token
+hookcatch token generate
+export HOOKCATCH_API_KEY="hc_live_..."
+
+# Use in scripts
+hookcatch bin create --name "CI Test" --format json | jq -r '.url'
+```
+
+## OpenClaw Integration
+
+HookCatch has a dedicated OpenClaw skill for AI-powered webhook testing:
+
+```bash
+# Install via ClawHub
+clawhub install hookcatch
+```
+
+See [skills/hookcatch/README.md](../../skills/hookcatch/README.md) for details.
+
+## Environment Variables
+
+Configure the CLI using environment variables:
+
+```bash
+# API Token (for authentication)
+export HOOKCATCH_TOKEN="hc_live_..."
+
+# API URL (defaults to https://api.hookcatch.dev)
+export HOOKCATCH_API_URL="https://api.hookcatch.dev"
+
+# For local development
+export HOOKCATCH_API_URL="http://localhost:3002"
+```
+
+**Priority order:**
+1. Environment variables (`HOOKCATCH_TOKEN`, `HOOKCATCH_API_URL`)
+2. Config file (`~/.config/hookcatch/config.json`)
+3. Default values (production API)
 
 ## Features
 
+### Webhook Bins
+- ✅ Create unlimited bins (tier-dependent)
+- ✅ Capture HTTP requests in real-time
+- ✅ Private bins with password protection (PLUS+)
+- ✅ JSON output for automation
+- ✅ Request filtering by method
+
+### Localhost Tunnels
 - ✅ Zero-config tunnel creation
 - ✅ Real-time request forwarding
-- ✅ Automatic reconnection on network issues (PRO+)
-- ✅ Password protection (PRO+ tier)
-- ✅ Custom subdomains (ENTERPRISE tier)
-- ✅ Usage tracking and limits
-- ✅ Cross-platform (Windows, Mac, Linux)
+- ✅ Automatic reconnection
+- ✅ Password protection (PRO+)
+- ✅ Custom subdomains (ENTERPRISE)
+
+### API Tokens
+- ✅ Long-lived tokens for automation
+- ✅ Secure bcrypt hashing
+- ✅ Easy revocation
+- ✅ No expiration (until regenerated)
 
 ## Tiers
 
-- **FREE**: No tunneling (upgrade required)
-- **PLUS**: 1 tunnel, 1-hour sessions, 1GB/month 
-- **PRO**: 5 tunnels, unlimited time, 10GB/month 
-- **ENTERPRISE**: 20 tunnels, custom subdomains, 100GB/month
+### FREE
+- 3 bins
+- 1,000 requests/month
+- 24h retention
+- 1 tunnel (5 min/session, 3 sessions/day)
+- Public bins only
+
+### PLUS ($10/month)
+- 25 bins
+- 25,000 requests/month
+- 14-day retention
+- 2 tunnels (1h/session, unlimited)
+- Private bins with passwords
+
+### PRO ($25/month)
+- Unlimited bins
+- 150,000 requests/month
+- 90-day retention
+- 5 tunnels (unlimited time)
+- Team features
+
+### ENTERPRISE (Custom)
+- Unlimited bins
+- 750,000 requests/month
+- 180-day retention
+- 20 tunnels (unlimited time)
+- Custom subdomains
+- SSO & SLA
+
+## Environment Variables
+
+- `HOOKCATCH_API_KEY` - API token for authentication
+- `HOOKCATCH_API_URL` - Override API URL (default: https://api.hookcatch.dev)
 
 ## Support
 
-- Documentation: https://hookcatch.dev/docs
-- Issues: https://github.com/yourusername/hookcatch-cli/issues
+- Documentation: https://docs.hookcatch.dev
+- GitHub: https://github.com/hookcatch/cli
 - Email: support@hookcatch.dev
 
 ## License
