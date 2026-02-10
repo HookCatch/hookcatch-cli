@@ -274,36 +274,6 @@ export HOOKCATCH_API_URL="http://localhost:3002"
 - ✅ Easy revocation
 - ✅ No expiration (until regenerated)
 
-## Tiers
-
-### FREE
-- 3 bins
-- 1,000 requests/month
-- 24h retention
-- 1 tunnel (5 min/session, 3 sessions/day)
-- Public bins only
-
-### PLUS
-- 25 bins
-- 25,000 requests/month
-- 14-day retention
-- 2 tunnels (1h/session, unlimited)
-- Private bins with passwords
-
-### PRO 
-- Unlimited bins
-- 150,000 requests/month
-- 90-day retention
-- 5 tunnels (unlimited time)
-- Team features
-
-### ENTERPRISE (Custom)
-- Unlimited bins
-- 750,000 requests/month
-- 180-day retention
-- 20 tunnels (unlimited time)
-- Custom subdomains
-- SSO & SLA
 
 ## Environment Variables
 
