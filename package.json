@@ -1,0 +1,66 @@
+{
+  "name": "hookcatch",
+  "version": "0.1.0",
+  "description": "CLI tool for creating localhost tunnels and testing webhooks with HookCatch",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "hookcatch": "./bin/hookcatch.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "webhook",
+    "tunnel",
+    "localhost",
+    "ngrok",
+    "development",
+    "testing",
+    "http",
+    "webhooks",
+    "debugging",
+    "request-bin",
+    "hookcatch"
+  ],
+  "author": {
+    "name": "HookCatch",
+    "email": "support@hookcatch.dev",
+    "url": "https://hookcatch.dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hookcatch/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hookcatch/cli/issues"
+  },
+  "homepage": "https://hookcatch.dev",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "conf": "^12.0.0",
+    "ora": "^8.0.1",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
