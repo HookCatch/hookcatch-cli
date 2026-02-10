@@ -283,14 +283,14 @@ export HOOKCATCH_API_URL="http://localhost:3002"
 - 1 tunnel (5 min/session, 3 sessions/day)
 - Public bins only
 
-### PLUS ($10/month)
+### PLUS
 - 25 bins
 - 25,000 requests/month
 - 14-day retention
 - 2 tunnels (1h/session, unlimited)
 - Private bins with passwords
 
-### PRO ($25/month)
+### PRO 
 - Unlimited bins
 - 150,000 requests/month
 - 90-day retention
