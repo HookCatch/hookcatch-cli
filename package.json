@@ -1,6 +1,6 @@
 {
   "name": "hookcatch",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "CLI tool for creating localhost tunnels and testing webhooks with HookCatch",
   "type": "module",
   "main": "dist/index.js",
