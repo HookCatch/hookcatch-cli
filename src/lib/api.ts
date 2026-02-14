@@ -21,6 +21,16 @@ class HookCatchAPI {
     };
   }
 
+  private getOptionalHeaders() {
+    const token = getApiToken();
+    if (!token) {
+      return {};
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+    };
+  }
+
   async createTunnel(localPort: number, options?: { subdomain?: string; password?: string }) {
     const response = await this.client.post(
       '/api/tunnels',
@@ -55,6 +65,13 @@ class HookCatchAPI {
     return response.data.stats;
   }
 
+  async getCurrentUser() {
+    const response = await this.client.get('/api/auth/me', {
+      headers: this.getHeaders(),
+    });
+    return response.data;
+  }
+
   async deleteTunnel(tunnelId: string) {
     const response = await this.client.delete(`/api/tunnels/${tunnelId}`, {
       headers: this.getHeaders(),
@@ -70,6 +87,8 @@ class HookCatchAPI {
   }
 
   async sendToBin(binId: string, data: { method: string; url: string; headers: Record<string, string>; body?: string }) {
+    const debugEnabled = process.env.HOOKCATCH_DEBUG === 'true';
+
     // Clean headers - remove problematic ones
     const cleanHeaders: Record<string, string> = {};
     for (const [key, value] of Object.entries(data.headers)) {
@@ -87,8 +106,10 @@ class HookCatchAPI {
     let requestBody: any = {};
     let finalContentType = 'application/json';
     
-    console.log('DEBUG sendToBin - raw body:', data.body);
-    console.log('DEBUG sendToBin - originalContentType:', originalContentType);
+    if (debugEnabled) {
+      console.log('DEBUG sendToBin - raw body:', data.body);
+      console.log('DEBUG sendToBin - originalContentType:', originalContentType);
+    }
     
     if (data.body && data.body.trim()) {
       if (originalContentType.includes('application/json')) {
@@ -96,12 +117,16 @@ class HookCatchAPI {
           // Parse JSON so axios sends it as object (axios will stringify)
           requestBody = JSON.parse(data.body);
           finalContentType = 'application/json';
-          console.log('DEBUG sendToBin - parsed JSON:', requestBody);
+          if (debugEnabled) {
+            console.log('DEBUG sendToBin - parsed JSON:', requestBody);
+          }
         } catch (e) {
           // Invalid JSON, send as raw text
           requestBody = data.body;
           finalContentType = 'text/plain';
-          console.log('DEBUG sendToBin - JSON parse failed, sending as text:', e);
+          if (debugEnabled) {
+            console.log('DEBUG sendToBin - JSON parse failed, sending as text:', e);
+          }
         }
       } else {
         // Non-JSON content, send raw
@@ -114,8 +139,10 @@ class HookCatchAPI {
       finalContentType = 'application/json';
     }
     
-    console.log('DEBUG sendToBin - final body:', requestBody);
-    console.log('DEBUG sendToBin - final content-type:', finalContentType);
+    if (debugEnabled) {
+      console.log('DEBUG sendToBin - final body:', requestBody);
+      console.log('DEBUG sendToBin - final content-type:', finalContentType);
+    }
 
     const response = await this.client.post(
       `/b/${binId}${data.url}`,
@@ -138,11 +165,11 @@ class HookCatchAPI {
       {
         name: options?.name,
         isPrivate: options?.isPrivate,
-        accessPassword: options?.password,
+        password: options?.password,
       },
       { headers: this.getHeaders() }
     );
-    return response.data.bin;
+    return response.data.bin || response.data;
   }
 
   async listBins() {
@@ -159,13 +186,26 @@ class HookCatchAPI {
     return response.data.bin;
   }
 
-  async getBinRequests(binId: string, options?: { limit?: number; before?: number }) {
+  async getBinRequests(binId: string, options?: { limit?: number; before?: number; password?: string; token?: string }) {
     const params = new URLSearchParams();
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.before) params.append('before', options.before.toString());
+    if (options?.password) params.append('password', options.password);
+    if (options?.token) params.append('token', options.token);
 
     const response = await this.client.get(`/api/bins/${binId}/requests?${params}`, {
-      headers: this.getHeaders(),
+      headers: this.getOptionalHeaders(),
+    });
+    return response.data;
+  }
+
+  async getBinRequest(binId: string, requestId: string, options?: { password?: string; token?: string }) {
+    const params = new URLSearchParams();
+    if (options?.password) params.append('password', options.password);
+    if (options?.token) params.append('token', options.token);
+
+    const response = await this.client.get(`/api/bins/${binId}/requests/${requestId}?${params}`, {
+      headers: this.getOptionalHeaders(),
     });
     return response.data;
   }
@@ -174,6 +214,34 @@ class HookCatchAPI {
     const response = await this.client.delete(`/api/bins/${binId}`, {
       headers: this.getHeaders(),
     });
+    return response.data;
+  }
+
+  async updateBin(binId: string, data: { name?: string; isPrivate?: boolean; password?: string }) {
+    const response = await this.client.patch(`/api/bins/${binId}`, data, {
+      headers: this.getHeaders(),
+    });
+    return response.data.bin || response.data;
+  }
+
+  async replayRequest(
+    binId: string, 
+    requestId: string, 
+    options: { 
+      url: string; 
+      headers?: Record<string, string>; 
+      body?: any 
+    }
+  ) {
+    const response = await this.client.post(
+      `/api/bins/${binId}/requests/${requestId}/replay`,
+      {
+        url: options.url,
+        headers: options.headers,
+        body: options.body,
+      },
+      { headers: this.getHeaders() }
+    );
     return response.data;
   }
 }

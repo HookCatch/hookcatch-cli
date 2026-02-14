@@ -5,16 +5,23 @@ import { api } from '../lib/api.js';
 import { TunnelClient } from '../lib/websocket.js';
 import { hasApiToken } from '../lib/config.js';
 import * as http from 'http';
+import * as readline from 'readline';
 import axios from 'axios';
+import { listCommand } from './list.js';
 
 export const tunnelCommand = new Command('tunnel')
   .description('Create a tunnel to your localhost')
-  .argument('<port>', 'Local port to forward (e.g., 3000)')
-  .option('--password <password>', 'Password-protect the tunnel (PRO+ tier)')
+  .argument('[port]', 'Local port to forward (e.g., 3000)')
+  .option('--password <password>', 'Password-protect the tunnel')
   .option('--subdomain <name>', 'Custom subdomain (ENTERPRISE tier)')
   .option('--capture <binId>', 'Capture outbound requests to a bin')
   .option('--proxy-port <port>', 'Local proxy port for capture (default: 8081)', '8081')
-  .action(async (portArg: string, options) => {
+  .addCommand(listCommand)
+  .action(async (portArg: string | undefined, options, command) => {
+    if (!portArg) {
+      command.outputHelp();
+      process.exit(1);
+    }
     if (!hasApiToken()) {
       console.log(chalk.red('✗ Not authenticated. Run "hookcatch login" first.\n'));
       process.exit(1);
@@ -36,7 +43,16 @@ export const tunnelCommand = new Command('tunnel')
 
     try {
       // Get user stats to determine tier and limits
-      const stats = await api.getTunnelStats();
+      let stats: any = {
+        tier: 'FREE',
+        limits: { totalTunnelTime: null, sessionLength: null },
+      };
+      let statsWarning: string | null = null;
+      try {
+        stats = await api.getTunnelStats();
+      } catch {
+        statsWarning = '⚠️  Usage stats unavailable; continuing without limits info.';
+      }
       
       // Create tunnel via API
       const tunnel = await api.createTunnel(port, {
@@ -45,6 +61,9 @@ export const tunnelCommand = new Command('tunnel')
       });
 
       spinner.succeed('Tunnel created');
+      if (statsWarning) {
+        console.log(chalk.yellow(statsWarning));
+      }
 
       console.log(chalk.green.bold('\n✓ Tunnel established'));
       console.log(chalk.cyan(`→ ${tunnel.url}`));
@@ -53,7 +72,60 @@ export const tunnelCommand = new Command('tunnel')
       if (options.password) {
         console.log(chalk.yellow('🔒 Password protected'));
       }
-      
+
+      const maxRecentRequests = 8;
+      const recentRequests: string[] = [];
+      const useRollingLog = Boolean(process.stdout.isTTY);
+
+      const formatRequestLine = (direction: 'INBOUND' | 'OUTBOUND', method: string, path: string, statusCode: number, duration: number) => {
+        const statusColor = statusCode >= 500 ? 'red' : statusCode >= 400 ? 'yellow' : 'green';
+        const timestamp = new Date().toLocaleTimeString();
+        const directionColor = direction === 'OUTBOUND' ? 'magenta' : 'blue';
+        return (
+          chalk.gray(`[${timestamp}]`) +
+          ' ' +
+          chalk[directionColor](direction.padEnd(8)) +
+          ' ' +
+          chalk.white(method.padEnd(6)) +
+          ' ' +
+          chalk.gray(path.padEnd(30)) +
+          ' ' +
+          chalk[statusColor](String(statusCode).padEnd(3)) +
+          ' ' +
+          chalk.gray(`(${duration}ms)`)
+        );
+      };
+
+      const renderRecentRequests = () => {
+        if (!useRollingLog) return;
+
+        const padded = Array.from({ length: maxRecentRequests }, () => '');
+        const startIndex = Math.max(0, maxRecentRequests - recentRequests.length);
+        recentRequests.forEach((line, index) => {
+          padded[startIndex + index] = line;
+        });
+
+        readline.moveCursor(process.stdout, 0, -maxRecentRequests);
+        for (let i = 0; i < maxRecentRequests; i++) {
+          readline.clearLine(process.stdout, 0);
+          readline.cursorTo(process.stdout, 0);
+          process.stdout.write(`${padded[i]}\n`);
+        }
+      };
+
+      const recordRequest = (direction: 'INBOUND' | 'OUTBOUND', method: string, path: string, statusCode: number, duration: number) => {
+        const line = formatRequestLine(direction, method, path, statusCode, duration);
+        if (!useRollingLog) {
+          console.log(line);
+          return;
+        }
+        recentRequests.push(line);
+        if (recentRequests.length > maxRecentRequests) {
+          recentRequests.shift();
+        }
+        renderRecentRequests();
+      };
+
       // Start capture proxy if --capture is provided
       let proxyServer: http.Server | null = null;
       if (options.capture) {
@@ -63,10 +135,17 @@ export const tunnelCommand = new Command('tunnel')
         console.log(chalk.gray(`\nConfigure your app to use this proxy:`));
         console.log(chalk.white(`  HTTP_PROXY=http://localhost:${proxyPort} node app.js\n`));
 
-        proxyServer = createCaptureProxy(proxyPort, options.capture);
+        proxyServer = createCaptureProxy(proxyPort, options.capture, recordRequest);
       }
 
       console.log(chalk.gray('Press Ctrl+C to stop\n'));
+
+      if (useRollingLog) {
+        console.log(chalk.gray(`Recent requests (latest ${maxRecentRequests}):`));
+        for (let i = 0; i < maxRecentRequests; i++) {
+          process.stdout.write('\n');
+        }
+      }
       
       // Session timer - updates at top right of terminal (on ASCII art line)
       const sessionStartTime = Date.now();
@@ -116,21 +195,7 @@ export const tunnelCommand = new Command('tunnel')
 
       // Connect WebSocket
       const client = new TunnelClient(tunnel.tunnelId, port, (method: string, path: string, statusCode: number, duration: number) => {
-        const statusColor = statusCode >= 500 ? 'red' : statusCode >= 400 ? 'yellow' : 'green';
-        const timestamp = new Date().toLocaleTimeString();
-        console.log(
-          chalk.gray(`[${timestamp}]`) +
-            ' ' +
-            chalk.blue('INBOUND ') +
-            ' ' +
-            chalk.white(method.padEnd(6)) +
-            ' ' +
-            chalk.gray(path.padEnd(30)) +
-            ' ' +
-            chalk[statusColor](String(statusCode).padEnd(3)) +
-            ' ' +
-            chalk.gray(`(${duration}ms)`)
-        );
+        recordRequest('INBOUND', method, path, statusCode, duration);
       });
 
       await client.connect();
@@ -162,7 +227,11 @@ export const tunnelCommand = new Command('tunnel')
     }
   });
 
-function createCaptureProxy(proxyPort: number, binId: string): http.Server {
+function createCaptureProxy(
+  proxyPort: number,
+  binId: string,
+  recordRequest: (direction: 'INBOUND' | 'OUTBOUND', method: string, path: string, statusCode: number, duration: number) => void
+): http.Server {
   const server = http.createServer(async (req, res) => {
     const startTime = Date.now();
     
@@ -178,8 +247,10 @@ function createCaptureProxy(proxyPort: number, binId: string): http.Server {
           body = body.slice(1, -1);
         }
         
-        console.log(chalk.gray('DEBUG - Captured body:'), body);
-        console.log(chalk.gray('DEBUG - Content-Type:'), req.headers['content-type']);
+        if (process.env.HOOKCATCH_DEBUG === 'true') {
+          console.log(chalk.gray('DEBUG - Captured body:'), body);
+          console.log(chalk.gray('DEBUG - Content-Type:'), req.headers['content-type']);
+        }
         
         // Send to bin endpoint
         try {
@@ -191,20 +262,7 @@ function createCaptureProxy(proxyPort: number, binId: string): http.Server {
           });
 
           const duration = Date.now() - startTime;
-          const timestamp = new Date().toLocaleTimeString();
-          console.log(
-            chalk.gray(`[${timestamp}]`) +
-              ' ' +
-              chalk.magenta('OUTBOUND') +
-              ' ' +
-              chalk.white((req.method || 'GET').padEnd(6)) +
-              ' ' +
-              chalk.gray((req.url || '/').padEnd(30)) +
-              ' ' +
-              chalk.green('200') +
-              ' ' +
-              chalk.gray(`(${duration}ms)`)
-          );
+          recordRequest('OUTBOUND', req.method || 'GET', req.url || '/', 200, duration);
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ 

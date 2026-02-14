@@ -80,7 +80,8 @@ hookcatch bin create [options]
 # Options:
 #   --name <name>          Bin name
 #   --private              Create private bin (PLUS+ tier)
-#   --password <password>  Password for private bin
+#   --password <password>  Password for private bin (min 4 chars)
+#   --format <type>        Output format: json|text (default: text)
 
 # Examples:
 hookcatch bin create --name "Stripe Webhooks"
@@ -91,7 +92,7 @@ hookcatch bin create --private --password secret123
 List all your bins.
 
 ```bash
-hookcatch bin list
+hookcatch bin list [--format json]
 ```
 
 #### `bin requests <binId>`
@@ -99,22 +100,70 @@ Get captured requests for a bin.
 
 ```bash
 hookcatch bin requests <binId> [options]
+hookcatch bin requests --binId <binId> [options]
 
 # Options:
 #   --limit <number>  Number of requests (default: 50)
 #   --format <type>   Output format: json|table (default: table)
 #   --method <method> Filter by HTTP method (GET, POST, etc.)
+#   --password <password>  Password for private bins (or use your auth token if you own the bin)
+#   --access-token <token> Access token for private bins
 
 # Examples:
 hookcatch bin requests abc123xyz --limit 10
 hookcatch bin requests abc123xyz --format json --method POST
+hookcatch bin requests abc123xyz --password "secret123"
 ```
+
+Table output includes response status and payload type columns.
+
+#### `request <requestId>`
+Show full details for a single request (headers, query, body).
+
+```bash
+hookcatch request <requestId> <binId> [options]
+hookcatch request --requestId <requestId> --binId <binId> [options]
+
+# Options:
+#   --format <type>   Output format: json|pretty (default: pretty)
+#   --password <password>  Password for private bins
+#   --access-token <token> Access token for private bins
+
+# Example:
+hookcatch request req_abc123 abc123xyz
+```
+
+#### `replay <binId> <requestId>`
+Replay a captured request to a new URL.
+
+```bash
+hookcatch replay <binId> <requestId> <url>
+hookcatch replay --binId <binId> --requestId <requestId> --url <url>
+
+hookcatch replay <binId> <requestId> --url https://example.com/hook \
+  --headers '{"X-Test":"1"}' \
+  --body '<xml>keep raw</xml>'    # accepts JSON or raw text
+```
+
+Notes:
+- `--body` tries JSON first; if parsing fails, it is sent as raw text (works for XML/HTML/plain)
+- Replay counts toward your monthly request quota (same as UI)
 
 #### `bin delete <binId>`
 Delete a bin.
 
 ```bash
 hookcatch bin delete <binId> --yes
+hookcatch bin delete --binId <binId> --yes
+```
+
+#### `bin update <binId>`
+Update bin settings (name/private/password).
+
+```bash
+hookcatch bin update <binId> --name "New Name"
+hookcatch bin update <binId> --private --password "secret123"
+hookcatch bin update <binId> --public
 ```
 
 ### API Token Management (NEW!)
@@ -125,7 +174,7 @@ Generate a long-lived API token for automation.
 ```bash
 hookcatch token generate
 # Store the token securely - it won't be shown again!
-# Use it with: export HOOKCATCH_API_KEY="hc_live_..."
+# Use it with: export HOOKCATCH_TOKEN="hc_live_..."
 ```
 
 #### `token status`
@@ -151,7 +200,7 @@ Create a tunnel to your localhost.
 hookcatch tunnel <port> [options]
 
 # Options:
-#   --password <password>  Password-protect tunnel (PRO+ tier)
+#   --password <password>  Password-protect tunnel
 #   --subdomain <name>     Custom subdomain (ENTERPRISE tier)
 #   --capture <binId>      Capture outbound requests to bin
 #   --proxy-port <port>    Local proxy port (default: 8081)
@@ -162,11 +211,11 @@ hookcatch tunnel 8080 --password secret123
 hookcatch tunnel 3000 --capture abc123
 ```
 
-#### `list`
+#### `tunnel list`
 Show all your active tunnels.
 
 ```bash
-hookcatch list
+hookcatch tunnel list
 ```
 
 #### `stop <tunnelId>`
@@ -174,6 +223,15 @@ Stop a specific tunnel.
 
 ```bash
 hookcatch stop abc123xyz
+```
+
+#### `status` / `whoami`
+Show your account details.
+
+```bash
+hookcatch status
+hookcatch whoami
+hookcatch status --format json
 ```
 
 ## Usage Examples
@@ -257,7 +315,7 @@ export HOOKCATCH_API_URL="http://localhost:3002"
 ### Webhook Bins
 - ✅ Create unlimited bins (tier-dependent)
 - ✅ Capture HTTP requests in real-time
-- ✅ Private bins with password protection (PLUS+)
+- ✅ Private bins with password protection 
 - ✅ JSON output for automation
 - ✅ Request filtering by method
 
@@ -265,8 +323,7 @@ export HOOKCATCH_API_URL="http://localhost:3002"
 - ✅ Zero-config tunnel creation
 - ✅ Real-time request forwarding
 - ✅ Automatic reconnection
-- ✅ Password protection (PRO+)
-- ✅ Custom subdomains (ENTERPRISE)
+- ✅ Password protection
 
 ### API Tokens
 - ✅ Long-lived tokens for automation
@@ -274,11 +331,6 @@ export HOOKCATCH_API_URL="http://localhost:3002"
 - ✅ Easy revocation
 - ✅ No expiration (until regenerated)
 
-
-## Environment Variables
-
-- `HOOKCATCH_API_KEY` - API token for authentication
-- `HOOKCATCH_API_URL` - Override API URL (default: https://api.hookcatch.dev)
 
 ## Support
 

@@ -32,6 +32,7 @@ function generateCommand() {
         const { token, createdAt } = response.data;
 
         spinner.succeed('API token generated');
+        setApiToken(token);
 
         console.log(chalk.green.bold('\n✓ New API token generated'));
         console.log(chalk.yellow('\n⚠️  Store this token securely. It will not be shown again.\n'));
@@ -39,11 +40,8 @@ function generateCommand() {
         console.log(chalk.white.bold(token));
         console.log(chalk.gray(`\nCreated: ${new Date(createdAt).toLocaleString()}`));
         console.log(chalk.gray('Expires: Never (until regenerated or revoked)'));
-        
-        // Ask if they want to save it as the default token
-        console.log(chalk.yellow('\n💡 To use this token in CLI, save it with:'));
-        console.log(chalk.cyan(`   export HOOKCATCH_TOKEN="${token}"`));
-        console.log(chalk.gray('\nOr save the current JWT token by default.\n'));
+        console.log(chalk.green('\n✓ Token saved for CLI use'));
+        console.log(chalk.gray('   (Stored in ~/.config/hookcatch/config.json)\n'));
       } catch (error: any) {
         spinner.fail('Failed to generate token');
         console.log(chalk.red(`✗ ${error.response?.data?.error || error.message}\n`));

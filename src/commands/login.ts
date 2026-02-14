@@ -5,6 +5,73 @@ import * as readline from 'readline';
 import { setApiToken, getApiUrl } from '../lib/config.js';
 import axios from 'axios';
 
+// Password masking helper
+function promptPassword(question: string): Promise<string> {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    // Mute readline echo to hide password input.
+    (rl as any)._writeToOutput = () => {};
+
+    const stdin = process.stdin as any;
+    stdin.setRawMode?.(true);
+    stdin.resume?.();
+    
+    let password = '';
+    
+    const render = () => {
+      readline.clearLine(process.stdout, 0);
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(question + '*'.repeat(password.length));
+    };
+
+    render();
+    
+    const onData = (char: Buffer) => {
+      const ch = char.toString('utf8');
+      
+      switch (ch) {
+        case '\n':
+        case '\r':
+        case '\u0004': // Ctrl-D
+          stdin.removeListener('data', onData);
+          stdin.setRawMode?.(false);
+          stdin.pause?.();
+          rl.close();
+          process.stdout.write('\n');
+          resolve(password);
+          break;
+        case '\u0003': // Ctrl-C
+          stdin.removeListener('data', onData);
+          stdin.setRawMode?.(false);
+          stdin.pause?.();
+          rl.close();
+          process.stdout.write('\n');
+          process.exit(1);
+          break;
+        case '\u007f': // Backspace
+        case '\b':
+          if (password.length > 0) {
+            password = password.slice(0, -1);
+            render();
+          }
+          break;
+        default:
+          if (ch.charCodeAt(0) >= 32) { // Printable character
+            password += ch;
+            render();
+          }
+          break;
+      }
+    };
+
+    stdin.on('data', onData);
+  });
+}
+
 export const loginCommand = new Command('login')
   .description('Authenticate with your HookCatch account')
   .option('--token <token>', 'Login with an API token directly')
@@ -71,14 +138,17 @@ async function loginWithCredentials() {
   };
 
   try {
-    const email = await prompt('Email: ');
-    const password = await prompt('Password: ');
+    let email = await prompt('Email: ');
+    const password = await promptPassword('Password: ');
 
     if (!email || !password) {
       console.log(chalk.red('\n✗ Email and password are required\n'));
       rl.close();
       process.exit(1);
     }
+    
+    // Normalize email to lowercase
+    email = email.toLowerCase().trim();
 
     const spinner = ora('Authenticating...').start();
 

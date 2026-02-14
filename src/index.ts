@@ -4,11 +4,13 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { loginCommand } from './commands/login.js';
 import { tunnelCommand } from './commands/tunnel.js';
-import { listCommand } from './commands/list.js';
 import { stopCommand } from './commands/stop.js';
 import { logoutCommand } from './commands/logout.js';
 import { binCommand } from './commands/bin.js';
 import { tokenCommand } from './commands/token.js';
+import { requestCommand } from './commands/request.js';
+import { replayCommand } from './commands/replay.js';
+import { statusCommand } from './commands/status.js';
 
 const program = new Command();
 
@@ -29,9 +31,11 @@ console.log(chalk.cyan(`
 // Add commands
 program.addCommand(loginCommand);
 program.addCommand(binCommand);
+program.addCommand(requestCommand);
+program.addCommand(replayCommand);
+program.addCommand(statusCommand);
 program.addCommand(tokenCommand);
 program.addCommand(tunnelCommand);
-program.addCommand(listCommand);
 program.addCommand(stopCommand);
 program.addCommand(logoutCommand);
 
