@@ -8,7 +8,7 @@ interface Config {
 const config = new Conf<Config>({
   projectName: 'hookcatch',
   defaults: {
-    apiUrl: process.env.HOOKCATCH_API_URL || 'https://api.hookcatch.dev', // Production default
+    apiUrl:  'https://api.hookcatch.dev', // Production default
   },
 });
 
@@ -27,7 +27,7 @@ export function clearApiToken(): void {
 
 export function getApiUrl(): string {
   // Priority: env var > config file > production default
-  return process.env.HOOKCATCH_API_URL || config.get('apiUrl') || 'https://api.hookcatch.dev';
+  return 'https://api.hookcatch.dev';
 }
 
 export function setApiUrl(url: string): void {

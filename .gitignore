@@ -3,4 +3,3 @@ dist/
 src/__tests__/
 *.log
 .DS_Store
-jest.config.cjs

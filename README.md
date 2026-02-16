@@ -79,7 +79,7 @@ hookcatch bin create [options]
 
 # Options:
 #   --name <name>          Bin name
-#   --private              Create private bin (PLUS+ tier)
+#   --private              Create private bin
 #   --password <password>  Password for private bin (min 4 chars)
 #   --format <type>        Output format: json|text (default: text)
 
@@ -201,7 +201,7 @@ hookcatch tunnel <port> [options]
 
 # Options:
 #   --password <password>  Password-protect tunnel
-#   --subdomain <name>     Custom subdomain (ENTERPRISE tier)
+#   --subdomain <name>     Custom subdomain 
 #   --capture <binId>      Capture outbound requests to bin
 #   --proxy-port <port>    Local proxy port (default: 8081)
 
